@@ -95,21 +95,59 @@ export default {
       const rounds = ROUNDS.map((i) => i.value);
       const series = [];
       const range = getDateRangeByTimeFrame(this.timeFrame);
-      const validData = this.data.filter((i) => {
+      const filteredByDateRangeData = this.data.filter((i) => {
         const date = i.date * 1000;
         return date >= range[0] && date <= range[1];
       });
+
+      const categories = CATEGORIES.map((c) => c.values).flat();
+      const others = filteredByDateRangeData.filter((i) => {
+        return i.category && !categories.includes(i.category);
+      });
+      const invalidData = filteredByDateRangeData.filter((i) => {
+        return (
+          (!i.category && !i.sector) ||
+          (i.sector &&
+            !i.category &&
+            !categories.some((v) =>
+              i.sector.toLowerCase().includes(v.toLowerCase())
+            ))
+        );
+      });
+      const ids = others
+        .map((i) => i._id)
+        .concat(invalidData.map((i) => i._id));
+      const validData = filteredByDateRangeData.filter(
+        (i) => !ids.includes(i._id)
+      );
       for (const category of CATEGORIES) {
         const data = [];
         for (const round of rounds) {
           data.push(
-            validData.filter((i) => {
-              const roundCondition = i.round === round;
-              const categoryCondition = i.category
-                ? category.values.includes(i.category)
-                : category.values.includes(i.sector);
-              return roundCondition && categoryCondition;
-            }).length
+            validData
+              .filter((i) => {
+                return i.round === round;
+              })
+              .filter((i) => {
+                if (i.category) {
+                  if (category.values.includes(i.category)) {
+                    return true;
+                  } else {
+                    return false;
+                  }
+                } else {
+                  if (
+                    i.sector &&
+                    category.values.some((v) =>
+                      i.sector.toLowerCase().includes(v.toLowerCase())
+                    )
+                  ) {
+                    return true;
+                  } else {
+                    return false;
+                  }
+                }
+              }).length
           );
         }
         series.push({
